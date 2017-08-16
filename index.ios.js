@@ -8,19 +8,40 @@ import React, { Component } from 'react';
 import {
   AppRegistry,
   Image,
-  ListView,
+  FlatList,
   StyleSheet,
   Text,
-  View
+  View,
+  Alert
 } from 'react-native';
+
+import {
+  StackNavigator,
+} from 'react-navigation';
 
 var REQUEST_URL = 'http://reader.smartisan.com/index.php?r=line/show';
 
+class ArticlePage extends Component {
+  static navigationOptions = {
+    title: '文章',
+  };
+  render(){
+    return (
+      <WebView
+        source={{uri: 'https://github.com/facebook/react-native'}}
+        style={styles.mainContainer}
+      />
+    )
+  }
+}
+
 class HomePage extends Component {
+  static navigationOptions = {
+    title: '锤子阅读',
+  };
   render(){
     return (
       <View style={styles.mainContainer}>
-        <TitleBar />
         <Timeline />
       </View>
     )
@@ -40,73 +61,25 @@ class TitleBar extends Component{
   }
 }
 
-class Timeline extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      dataSource : new ListView.DataSource({
-        rowHasChanged: (row1, row2) => row1 !== row2,
-      }),
-      loaded : false,
-    };
-  }
+class TimelineItem extends React.PureComponent {
 
-  componentDidMount(){
-    this.fetchData();
-  }
+  _onPress = () => {
+    this.props.onPressItem(this.props.article);
+  };
 
-  fetchData() {
-    fetch(REQUEST_URL)
-      .then((response) => response.json())
-      .then((responseData) => {
-        this.setState({
-          dataSource : this.state.dataSource.cloneWithRows(responseData.data.list),
-          loaded : true,
-        });
-      })
-      .catch((error) => {
-        console.error(error);
-      })
-      .done();
-  }
-
-  render() {
-    if(!this.state.loaded){
-      return this.renderLoadingView();
+  renderThumbnail(url){
+    if(url){
+      return (<Image
+        source={{uri: url}}
+        style={styles.thumbnail}
+      />)
     }
-
-    return (
-      <ListView
-        dataSource = {this.state.dataSource}
-        renderRow = {this.renderMovie}
-        style = {styles.listView}
-        renderSeparator={(sectionID, rowID) => <View key={`${sectionID}-${rowID}`} style={styles.separator} />}
-      />
-    );
+    return null;
   }
 
-  renderLoadingView(){
-    return (
-      <View style={styles.container}>
-        <Text>
-          Loading movies...
-        </Text>
-      </View>
-    )
-  }
-
-  renderMovie(article){
+  render(){
+    var article = this.props.article;
     var prepicView;
-
-    renderThumbnail = (url) => {
-      if(url){
-        return (<Image
-          source={{uri: url}}
-          style={styles.thumbnail}
-        />)
-      }
-      return null;
-    }
 
     if(article.prepic1){
       prepicView = (<View style={styles.imageContainer}>
@@ -126,6 +99,82 @@ class Timeline extends Component {
         {prepicView}
       </View>
     );
+  }
+}
+
+class Timeline extends React.PureComponent {
+  constructor(props) {
+    super(props);
+    this.state = {
+      dataSource :[],
+      loaded : false,
+    };
+  }
+
+  _keyExtractor = (item, index) => item.id;
+
+  componentDidMount(){
+    this.fetchData();
+  }
+
+  fetchData() {
+    fetch(REQUEST_URL)
+      .then((response) => response.json())
+      .then((responseData) => {
+        this.setState({
+          dataSource : responseData.data.list,
+          loaded : true,
+        });
+      })
+      .catch((error) => {
+        console.error(error);
+      })
+      .done();
+  }
+
+  _onPressItem = ({article}) =>(
+    /**this.props.navigation('TimelineItem', {name:'jane'})**/
+    Alert.alert(
+      'Alert Title',
+      'My Alert Msg',
+      [
+        {text: 'Ask me later', onPress: () => console.log('Ask me later pressed')},
+        {text: 'Cancel', onPress: () => console.log('Cancel Pressed'), style: 'cancel'},
+        {text: 'OK', onPress: () => console.log('OK Pressed')},
+      ],
+      { cancelable: false }
+    )
+  );
+
+
+  render() {
+    if(!this.state.loaded){
+      return this.renderLoadingView();
+    }
+
+    return (
+      <FlatList
+        data = {this.state.dataSource}
+        renderItem = { ({item}) =>(
+          <TimelineItem
+            article = {item}
+            onPressItem={this._onPressItem}
+          />
+        ) }
+        style = {styles.listView}
+        keyExtractor={this._keyExtractor}
+      />
+    );
+  }
+
+  renderLoadingView(){
+    return (
+      <View style={styles.container}>
+        <Text>
+          Loading movies...
+        </Text>
+      </View>
+    )
   }
 }
 
@@ -197,4 +246,9 @@ const styles = StyleSheet.create({
   },
 });
 
-AppRegistry.registerComponent('SmartisanReaderRN', () => HomePage);
+const App = StackNavigator({
+  Home: { screen: HomePage },
+  Article: { screen: ArticlePage },
+});
+
+AppRegistry.registerComponent('SmartisanReaderRN', () => App);
