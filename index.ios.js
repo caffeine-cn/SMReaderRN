@@ -12,7 +12,9 @@ import {
   StyleSheet,
   Text,
   View,
-  Alert
+  Alert,
+  TouchableOpacity,
+  WebView
 } from 'react-native';
 
 import {
@@ -22,13 +24,14 @@ import {
 var REQUEST_URL = 'http://reader.smartisan.com/index.php?r=line/show';
 
 class ArticlePage extends Component {
-  static navigationOptions = {
-    title: '文章',
-  };
+  static navigationOptions = ({ navigation }) => ({
+    title: `${navigation.state.params.article.title}`,
+  });
   render(){
+    const { params } = this.props.navigation.state;
     return (
       <WebView
-        source={{uri: 'https://github.com/facebook/react-native'}}
+        source={{uri: params.article.origin_url}}
         style={styles.mainContainer}
       />
     )
@@ -42,7 +45,7 @@ class HomePage extends Component {
   render(){
     return (
       <View style={styles.mainContainer}>
-        <Timeline />
+        <Timeline navigation = {this.props.navigation}/>
       </View>
     )
   }
@@ -93,11 +96,11 @@ class TimelineItem extends React.PureComponent {
     }
 
     return (
-      <View style={styles.container}>
+      <TouchableOpacity style={styles.container} onPress={this._onPress}>
         <Text numberOfLines={2} style={styles.title}>{article.title}</Text>
         <Text numberOfLines={3} style={styles.brief}>{article.brief}</Text>
         {prepicView}
-      </View>
+      </TouchableOpacity>
     );
   }
 }
@@ -121,6 +124,7 @@ class Timeline extends React.PureComponent {
     fetch(REQUEST_URL)
       .then((response) => response.json())
       .then((responseData) => {
+        console.log(responseData.data.list);
         this.setState({
           dataSource : responseData.data.list,
           loaded : true,
@@ -132,19 +136,10 @@ class Timeline extends React.PureComponent {
       .done();
   }
 
-  _onPressItem = ({article}) =>(
-    /**this.props.navigation('TimelineItem', {name:'jane'})**/
-    Alert.alert(
-      'Alert Title',
-      'My Alert Msg',
-      [
-        {text: 'Ask me later', onPress: () => console.log('Ask me later pressed')},
-        {text: 'Cancel', onPress: () => console.log('Cancel Pressed'), style: 'cancel'},
-        {text: 'OK', onPress: () => console.log('OK Pressed')},
-      ],
-      { cancelable: false }
-    )
-  );
+  _onPressItem = (article) =>{
+    const { navigate } = this.props.navigation;
+    navigate('Article', {article:article})
+  };
 
 
   render() {
@@ -155,6 +150,7 @@ class Timeline extends React.PureComponent {
     return (
       <FlatList
         data = {this.state.dataSource}
+        extraData={this.state}
         renderItem = { ({item}) =>(
           <TimelineItem
             article = {item}
